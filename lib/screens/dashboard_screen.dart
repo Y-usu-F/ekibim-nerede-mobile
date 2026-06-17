@@ -67,6 +67,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
+    final int roleId = _user?['role_id'] ?? 3;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ekibim Nerede - Portal'),
@@ -82,6 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // User Info Card
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -113,7 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         border: Border.all(color: Colors.blue.shade200),
                       ),
                       child: Text(
-                        _getRoleName(_user?['role_id'] ?? 3),
+                        _getRoleName(roleId),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -125,9 +128,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
+
+            // CONDITIONAL RBAC WIDGETS
+            if (roleId == 1 || roleId == 2) ...[
+              // Manager/Admin Controls
+              const Text(
+                'Yönetici İşlemleri',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.add_location_alt, color: Colors.blue),
+                      title: const Text('Yeni Görev Ata'),
+                      subtitle: const Text('Harita üzerinden sahaya yeni görev ekle'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        // US-05: To be implemented
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.map_rounded, color: Colors.green),
+                      title: const Text('Saha Ekiplerini İzle'),
+                      subtitle: const Text('Canlı konum haritasını görüntüle'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        // US-04: To be implemented
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              // Standard Field Worker Controls
+              const Text(
+                'Saha İşlemleri',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.my_location, color: Colors.purple),
+                      title: const Text('Konum Paylaşımı Kontrolü'),
+                      subtitle: const Text('Canlı konum paylaşımını başlat veya durdur'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        // US-11: To be implemented
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.assignment, color: Colors.amber),
+                      title: const Text('Bana Atanan Görevler'),
+                      subtitle: const Text('Aktif görev listesini ve detaylarını gör'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        // US-06: To be implemented
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 24),
             const Text(
-              'Sistem Bilgileri',
+              'Güvenlik ve Oturum',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -149,7 +223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      maxHeight: 100,
+                      maxHeight: 80,
                       width: double.infinity,
                       child: SingleChildScrollView(
                         child: Text(
@@ -158,14 +232,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     const Row(
                       children: [
-                        Icon(Icons.check_circle, color: Colors.green, size: 18),
+                        Icon(Icons.verified_user, color: Colors.green, size: 18),
                         SizedBox(width: 8),
                         Text(
-                          'Güvenli REST API Bağlantısı Aktif',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          'Rol Tabanlı Erişim Koruma Aktif',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.green),
                         )
                       ],
                     )
