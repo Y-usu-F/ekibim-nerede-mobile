@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../services/localization_service.dart';
 import 'register_screen.dart';
 import 'dashboard_screen.dart';
 
@@ -58,8 +59,8 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Giriş başarısız. Lütfen e-posta ve şifrenizi kontrol edin.'),
+          SnackBar(
+            content: Text(t('login_failed')),
             backgroundColor: Colors.red,
           ),
         );
@@ -92,15 +93,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.blue,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Ekibim Nerede',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  Text(
+                    t('login_title'),
+                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Ekip yönetim ve konum izleme portalı',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  Text(
+                    t('login_subtitle'),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
@@ -108,15 +109,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Email
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'E-posta',
-                      prefixIcon: Icon(Icons.email),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: t('email'),
+                      prefixIcon: const Icon(Icons.email),
+                      border: const OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'E-posta adresi girin.';
+                        return t('email_validation');
                       }
                       return null;
                     },
@@ -127,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
-                      labelText: 'Şifre',
+                      labelText: t('password'),
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
@@ -138,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: _obscurePassword,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Şifrenizi girin.';
+                        return t('password_validation');
                       }
                       return null;
                     },
@@ -159,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
-                        : const Text('Giriş Yap', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        : Text(t('login_btn'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 24),
 
@@ -171,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         MaterialPageRoute(builder: (context) => const RegisterScreen()),
                       );
                     },
-                    child: const Text('Hesabınız yok mu? Şimdi Kayıt Olun'),
+                    child: Text(t('no_account')),
                   ),
                 ],
               ),

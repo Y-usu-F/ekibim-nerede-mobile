@@ -101,4 +101,49 @@ class ApiService {
       'status': status,
     });
   }
+
+  /// REST API: POST /api/locations/bulk
+  Future<Response> saveLocationBulk(List<Map<String, dynamic>> locations) async {
+    return await dio.post('api/locations/bulk', data: locations);
+  }
+
+  /// REST API: POST /api/leaves
+  Future<Response> requestLeave({
+    required String startDate,
+    required String endDate,
+    required String type,
+    String? description,
+  }) async {
+    return await dio.post('api/leaves', data: {
+      'start_date': startDate,
+      'end_date': endDate,
+      'type': type,
+      'description': description ?? '',
+    });
+  }
+
+  /// REST API: GET /api/leaves
+  Future<Response> getMyLeaves() async {
+    return await dio.get('api/leaves');
+  }
+
+  /// REST API: POST /api/activities
+  Future<Response> createActivity({
+    required String type,
+    required String description,
+    required double latitude,
+    required double longitude,
+  }) async {
+    return await dio.post('api/activities', data: {
+      'type': type,
+      'description': description,
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+  }
+
+  /// REST API: GET /api/activities
+  Future<Response> getMyActivities() async {
+    return await dio.get('api/activities');
+  }
 }

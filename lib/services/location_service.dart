@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:location/location.dart';
 import 'api_service.dart';
+import 'storage_service.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -55,11 +56,17 @@ class LocationService {
 
       _subscription = _location.onLocationChanged.listen((LocationData data) async {
         if (data.latitude != null && data.longitude != null) {
+          final nowIso = DateTime.now().toUtc().toIso8601String();
           try {
             await ApiService().saveLocation(data.latitude!, data.longitude!);
             print("Dynamic Location Uploaded: ${data.latitude}, ${data.longitude}");
           } catch (e) {
-            print("API Error uploading coordinates: $e");
+            print("API Error uploading coordinates: $e. Caching offline...");
+            await StorageService().saveOfflineLocation({
+              'latitude': data.latitude!,
+              'longitude': data.longitude!,
+              'created_at': nowIso,
+            });
           }
         }
       });

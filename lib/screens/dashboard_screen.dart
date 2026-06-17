@@ -2,9 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 import '../services/location_service.dart';
+import '../services/api_service.dart';
+import '../services/localization_service.dart';
 import 'login_screen.dart';
 import 'shift_screen.dart';
 import 'task_list_screen.dart';
+import 'leave_screen.dart';
+import 'activity_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -18,12 +22,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _token;
   bool _loading = true;
   bool _isTracking = false;
+  bool _onLeave = false;
 
   @override
   void initState() {
     super.initState();
     _loadAuthData();
     _isTracking = LocationService().isTracking;
+    LocalizationService.addListener(_onLanguageChanged);
+  }
+
+  @override
+  void dispose() {
+    LocalizationService.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadAuthData() async {
@@ -31,14 +49,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final token = await storage.getToken();
     final userJson = await storage.getUser();
 
+    bool onLeave = false;
+    if (token != null) {
+      try {
+        final response = await ApiService().getShiftStatus();
+        if (response.data != null && response.data['status'] == 'success') {
+          onLeave = response.data['on_leave'] ?? false;
+        }
+      } catch (e) {
+        print("Error fetching shift/leave status in dashboard: $e");
+      }
+    }
+
     if (mounted) {
       setState(() {
         _token = token;
         if (userJson != null) {
           _user = jsonDecode(userJson);
         }
+        _onLeave = onLeave;
         _loading = false;
       });
+
+      // Strict enforcement of KVKK: if today is an approved leave, background tracking is disabled.
+      if (_onLeave) {
+        LocationService().stopTracking();
+        setState(() {
+          _isTracking = false;
+        });
+      }
     }
   }
 
@@ -52,7 +91,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Konum paylaşımı başlatıldı.')),
+            SnackBar(content: Text(t('location_sharing_active'))),
           );
         }
       } else {
@@ -61,7 +100,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Konum paylaşımı başlatılamadı. İzinleri ve GPS servislerini kontrol edin.')),
+            SnackBar(content: Text(LocalizationService.currentLanguage == 'en' 
+                ? 'Could not start location sharing. Please check permissions and GPS services.' 
+                : 'Konum paylaşımı başlatılamadı. İzinleri ve GPS servislerini kontrol edin.')),
           );
         }
       }
@@ -72,7 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Konum paylaşımı durduruldu.')),
+          SnackBar(content: Text(t('location_sharing_inactive'))),
         );
       }
     }
@@ -92,12 +133,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _getRoleName(int roleId) {
     switch (roleId) {
       case 1:
-        return 'Sistem Yöneticisi (Admin)';
+        return t('role_admin');
       case 2:
-        return 'Yönetici (Manager)';
+        return t('role_manager');
       case 3:
       default:
-        return 'Saha Personeli (User)';
+        return t('role_user');
     }
   }
 
@@ -113,8 +154,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ekibim Nerede - Portal'),
+        title: Text(t('app_name')),
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.language),
+            onSelected: (String lang) async {
+              await LocalizationService.setLanguage(lang);
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem(value: 'tr', child: Text('Türkçe (TR)')),
+              const PopupMenuItem(value: 'en', child: Text('English (EN)')),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.red),
             onPressed: _handleLogout,
@@ -141,7 +192,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _user?['name'] ?? 'Kullanıcı Adı',
+                      _user?['name'] ?? (LocalizationService.currentLanguage == 'en' ? 'Username' : 'Kullanıcı Adı'),
                       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
@@ -175,9 +226,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // CONDITIONAL RBAC WIDGETS
             if (roleId == 1 || roleId == 2) ...[
               // Manager/Admin Controls
-              const Text(
-                'Yönetici İşlemleri',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                t('manager_actions'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               Card(
@@ -186,8 +237,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.add_location_alt, color: Colors.blue),
-                      title: const Text('Yeni Görev Ata'),
-                      subtitle: const Text('Harita üzerinden sahaya yeni görev ekle'),
+                      title: Text(t('new_task')),
+                      subtitle: Text(t('new_task_subtitle')),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         // US-05: To be implemented
@@ -196,8 +247,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.map_rounded, color: Colors.green),
-                      title: const Text('Saha Ekiplerini İzle'),
-                      subtitle: const Text('Canlı konum haritasını görüntüle'),
+                      title: Text(t('track_teams')),
+                      subtitle: Text(t('track_teams_subtitle')),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         // US-04: To be implemented
@@ -208,48 +259,109 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ] else ...[
               // Standard Field Worker Controls
-              const Text(
-                'Saha İşlemleri',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                t('worker_actions'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
+              if (_onLeave) ...[
+                Card(
+                  color: Colors.orange.shade50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.orange.shade300, width: 1.5),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t('on_leave_today'),
+                                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade900, fontSize: 16),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                t('leave_kvkk_warning'),
+                                style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: Column(
                   children: [
                     ListTile(
                       leading: const Icon(Icons.access_time_filled, color: Colors.teal),
-                      title: const Text('Mesai Giriş/Çıkış'),
-                      subtitle: const Text('QR kod ile mesai başlat veya bitir'),
+                      title: Text(t('shift_clock')),
+                      subtitle: Text(t('shift_clock_subtitle')),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ShiftScreen()),
                         ).then((_) {
-                          setState(() {
-                            _isTracking = LocationService().isTracking;
-                          });
+                          _loadAuthData();
                         });
                       },
                     ),
                     const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.my_location, color: Colors.purple),
-                      title: const Text('Konum Paylaşımı Kontrolü'),
-                      subtitle: Text(_isTracking ? 'Konum paylaşımı AKTİF' : 'Konum paylaşımı KAPALI'),
+                      title: Text(t('location_sharing_control')),
+                      subtitle: Text(_onLeave 
+                          ? t('location_sharing_leave')
+                          : (_isTracking ? t('location_sharing_active') : t('location_sharing_inactive'))),
                       trailing: Switch(
-                        value: _isTracking,
+                        value: _onLeave ? false : _isTracking,
                         activeThumbColor: Colors.purple,
                         activeTrackColor: Colors.purple.shade200,
-                        onChanged: _toggleLocationTracking,
+                        onChanged: _onLeave ? null : _toggleLocationTracking,
                       ),
                     ),
                     const Divider(height: 1),
                     ListTile(
+                      leading: const Icon(Icons.pending_actions, color: Colors.blue),
+                      title: Text(t('log_activity')),
+                      subtitle: Text(t('log_activity_subtitle')),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ActivityScreen()),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.beach_access, color: Colors.pink),
+                      title: Text(t('leave_requests')),
+                      subtitle: Text(t('leave_requests_subtitle')),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LeaveScreen()),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       leading: const Icon(Icons.assignment, color: Colors.amber),
-                      title: const Text('Bana Atanan Görevler'),
-                      subtitle: const Text('Aktif görev listesini ve detaylarını gör'),
+                      title: Text(t('my_tasks')),
+                      subtitle: Text(t('my_tasks_subtitle')),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.push(
@@ -264,9 +376,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
 
             const SizedBox(height: 24),
-            const Text(
-              'Güvenlik ve Oturum',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              t('security_session'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             Card(
@@ -276,9 +388,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Aktif Oturum Tokeni (JWT)',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    Text(
+                      t('active_session_token'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -291,19 +403,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       width: double.infinity,
                       child: SingleChildScrollView(
                         child: Text(
-                          _token ?? 'Token yok',
+                          _token ?? t('no_token'),
                           style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
                         ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.verified_user, color: Colors.green, size: 18),
-                        SizedBox(width: 8),
+                        const Icon(Icons.verified_user, color: Colors.green, size: 18),
+                        const SizedBox(width: 8),
                         Text(
-                          'Rol Tabanlı Erişim Koruma Aktif',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.green),
+                          t('rbac_active'),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.green),
                         )
                       ],
                     )

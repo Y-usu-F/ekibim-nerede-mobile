@@ -4,6 +4,7 @@ import 'package:location/location.dart' as loc;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
+import '../services/localization_service.dart';
 
 class ShiftScreen extends StatefulWidget {
   const ShiftScreen({super.key});
@@ -16,6 +17,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
   final _apiService = ApiService();
   bool _loading = true;
   bool _isClockedIn = false;
+  bool _onLeave = false;
   Map<String, dynamic>? _activeShift;
   Timer? _timer;
   String _elapsedTime = "00:00:00";
@@ -42,6 +44,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
           setState(() {
             _isClockedIn = data['is_clocked_in'];
             _activeShift = data['active_shift'];
+            _onLeave = data['on_leave'] ?? false;
             _loading = false;
           });
           if (_isClockedIn) {
@@ -55,7 +58,9 @@ class _ShiftScreenState extends State<ShiftScreen> {
       if (mounted) {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: Sunucu bağlantı hatası ($e)')),
+          SnackBar(content: Text(LocalizationService.currentLanguage == 'en' 
+              ? 'Error: Server connection error ($e)' 
+              : 'Hata: Sunucu bağlantı hatası ($e)')),
         );
       }
     }
@@ -110,7 +115,9 @@ class _ShiftScreenState extends State<ShiftScreen> {
       setState(() => _loading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Konum bilgisi alınamadı. Lütfen konum servislerini açın.')),
+          SnackBar(content: Text(LocalizationService.currentLanguage == 'en' 
+              ? 'Could not retrieve location. Please enable location services.' 
+              : 'Konum bilgisi alınamadı. Lütfen konum servislerini açın.')),
         );
       }
       return;
@@ -130,7 +137,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
         await _checkShiftStatus();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Mesai başarıyla başlatıldı.')),
+            SnackBar(content: Text(t('clock_in_success'))),
           );
         }
       }
@@ -138,7 +145,9 @@ class _ShiftScreenState extends State<ShiftScreen> {
       setState(() => _loading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Giriş başarısız: Yetkisiz QR Kod veya veri uyuşmazlığı.')),
+          SnackBar(content: Text(LocalizationService.currentLanguage == 'en'
+              ? 'Clock-in failed: Unauthorized QR Code or data mismatch.'
+              : 'Giriş başarısız: Yetkisiz QR Kod veya veri uyuşmazlığı.')),
         );
       }
     }
@@ -151,7 +160,9 @@ class _ShiftScreenState extends State<ShiftScreen> {
       setState(() => _loading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Konum bilgisi alınamadı. Lütfen konum servislerini açın.')),
+          SnackBar(content: Text(LocalizationService.currentLanguage == 'en'
+              ? 'Could not retrieve location. Please enable location services.'
+              : 'Konum bilgisi alınamadı. Lütfen konum servislerini açın.')),
         );
       }
       return;
@@ -170,7 +181,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
         await _checkShiftStatus();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Mesai sonlandırıldı.')),
+            SnackBar(content: Text(t('clock_out_success'))),
           );
         }
       }
@@ -178,7 +189,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
       setState(() => _loading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Çıkış yapılamadı: $e')),
+          SnackBar(content: Text(LocalizationService.currentLanguage == 'en' ? 'Clock-out failed: $e' : 'Çıkış yapılamadı: $e')),
         );
       }
     }
@@ -188,7 +199,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('QR Kodu Taratın')),
+          appBar: AppBar(title: Text(LocalizationService.currentLanguage == 'en' ? 'Scan QR Code' : 'QR Kodu Taratın')),
           body: MobileScanner(
             onDetect: (capture) {
               final barcodes = capture.barcodes;
@@ -211,7 +222,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mesai Kontrol Paneli'),
+        title: Text(LocalizationService.currentLanguage == 'en' ? 'Shift Control Panel' : 'Mesai Kontrol Paneli'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -223,31 +234,45 @@ class _ShiftScreenState extends State<ShiftScreen> {
                   // Status Header Card
                   Card(
                     elevation: 4,
-                    color: _isClockedIn ? Colors.green.shade50 : Colors.red.shade50,
+                    color: _onLeave 
+                        ? Colors.orange.shade50 
+                        : (_isClockedIn ? Colors.green.shade50 : Colors.red.shade50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: Column(
                         children: [
                           Icon(
-                            _isClockedIn ? Icons.check_circle : Icons.error_outline,
+                            _onLeave 
+                                ? Icons.beach_access 
+                                : (_isClockedIn ? Icons.check_circle : Icons.error_outline),
                             size: 64,
-                            color: _isClockedIn ? Colors.green : Colors.red,
+                            color: _onLeave 
+                                ? Colors.orange 
+                                : (_isClockedIn ? Colors.green : Colors.red),
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            _isClockedIn ? 'Mesaide' : 'Mesai Dışı',
+                            _onLeave 
+                                ? (LocalizationService.currentLanguage == 'en' ? 'On Leave' : 'İzinli') 
+                                : (_isClockedIn 
+                                    ? (LocalizationService.currentLanguage == 'en' ? 'On Duty' : 'Mesaide') 
+                                    : (LocalizationService.currentLanguage == 'en' ? 'Off Duty' : 'Mesai Dışı')),
                             style: TextStyle(
                               fontSize: 24, 
                               fontWeight: FontWeight.bold,
-                              color: _isClockedIn ? Colors.green.shade800 : Colors.red.shade800
+                              color: _onLeave 
+                                  ? Colors.orange.shade800 
+                                  : (_isClockedIn ? Colors.green.shade800 : Colors.red.shade800)
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            _isClockedIn 
-                                ? 'Canlı mesai süresi aşağıda akmaktadır.' 
-                                : 'Mesaiyi başlatmak için iş yeri QR kodunu taratın.',
+                            _onLeave 
+                                ? (LocalizationService.currentLanguage == 'en' ? 'You have an approved leave request today.' : 'Bugün onaylı izniniz bulunmaktadır.') 
+                                : (_isClockedIn 
+                                    ? (LocalizationService.currentLanguage == 'en' ? 'Live shift duration is ticking below.' : 'Canlı mesai süresi aşağıda akmaktadır.') 
+                                    : t('shift_start_hint')),
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 14, color: Colors.black54),
                           ),
@@ -266,9 +291,9 @@ class _ShiftScreenState extends State<ShiftScreen> {
                         padding: const EdgeInsets.all(24.0),
                         child: Column(
                           children: [
-                            const Text(
-                              'Çalışma Süresi',
-                              style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.bold, letterSpacing: 1),
+                            Text(
+                              LocalizationService.currentLanguage == 'en' ? 'Work Duration' : 'Çalışma Süresi',
+                              style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.bold, letterSpacing: 1),
                             ),
                             const SizedBox(height: 12),
                             Text(
@@ -283,12 +308,12 @@ class _ShiftScreenState extends State<ShiftScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.location_on, size: 14, color: Colors.green),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Giriş Konumu Kayıtlı: ${_activeShift?['clock_in_latitude']?.toStringAsFixed(5)}, ${_activeShift?['clock_in_longitude']?.toStringAsFixed(5)}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                )
+                                  const Icon(Icons.location_on, size: 14, color: Colors.green),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${LocalizationService.currentLanguage == 'en' ? 'Clock-in Location Registered' : 'Giriş Konumu Kayıtlı'}: ${_activeShift?['clock_in_latitude']?.toStringAsFixed(5)}, ${_activeShift?['clock_in_longitude']?.toStringAsFixed(5)}',
+                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  )
                               ],
                             )
                           ],
@@ -299,10 +324,39 @@ class _ShiftScreenState extends State<ShiftScreen> {
                   ],
 
                   // Actions Section
-                  if (!_isClockedIn) ...[
+                  if (_onLeave) ...[
+                    // When user is on leave, block clock-in entirely
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.shade300),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.lock, color: Colors.orange, size: 36),
+                          const SizedBox(height: 8),
+                          Text(
+                            LocalizationService.currentLanguage == 'en' ? 'Shifts cannot be started on leave days.' : 'İzinli günlerde mesai başlatılamaz.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            LocalizationService.currentLanguage == 'en'
+                                ? 'Location tracking is disabled on leave days for KVKK compliance.'
+                                : 'KVKK ve şirket politikaları gereği izinli olduğunuz günlerde konum takibi durdurulmuştur.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12, color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else if (!_isClockedIn) ...[
                     ElevatedButton.icon(
                       icon: const Icon(Icons.qr_code_scanner),
-                      label: const Text('QR Kod Okutarak Başlat'),
+                      label: Text(t('scan_qr')),
                       onPressed: _openQrScanner,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -315,7 +369,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
                     // Emulators & Test Mocking Button
                     OutlinedButton.icon(
                       icon: const Icon(Icons.bug_report),
-                      label: const Text('Mesaiyi Başlat (Simülatör Modu)'),
+                      label: Text(LocalizationService.currentLanguage == 'en' ? 'Start Shift (Simulator Mode)' : 'Mesaiyi Başlat (Simülatör Modu)'),
                       onPressed: () => _handleClockIn('ekibim_nerede_office_location_1'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -327,7 +381,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
                   ] else ...[
                     ElevatedButton.icon(
                       icon: const Icon(Icons.stop_circle),
-                      label: const Text('Mesaiyi Bitir'),
+                      label: Text(t('end_shift')),
                       onPressed: _handleClockOut,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
