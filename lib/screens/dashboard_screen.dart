@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
+import '../services/location_service.dart';
 import 'login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -14,11 +15,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _user;
   String? _token;
   bool _loading = true;
+  bool _isTracking = false;
 
   @override
   void initState() {
     super.initState();
     _loadAuthData();
+    _isTracking = LocationService().isTracking;
   }
 
   Future<void> _loadAuthData() async {
@@ -37,7 +40,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _toggleLocationTracking(bool value) async {
+    final locationService = LocationService();
+    if (value) {
+      final success = await locationService.startTracking();
+      if (success) {
+        setState(() {
+          _isTracking = true;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Konum paylaşımı başlatıldı.')),
+          );
+        }
+      } else {
+        setState(() {
+          _isTracking = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Konum paylaşımı başlatılamadı. İzinleri ve GPS servislerini kontrol edin.')),
+          );
+        }
+      }
+    } else {
+      locationService.stopTracking();
+      setState(() {
+        _isTracking = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Konum paylaşımı durduruldu.')),
+        );
+      }
+    }
+  }
+
   Future<void> _handleLogout() async {
+    LocationService().stopTracking(); // Stop background tracking on logout
     await StorageService().clearAuth();
     if (mounted) {
       Navigator.pushReplacement(
@@ -178,11 +218,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ListTile(
                       leading: const Icon(Icons.my_location, color: Colors.purple),
                       title: const Text('Konum Paylaşımı Kontrolü'),
-                      subtitle: const Text('Canlı konum paylaşımını başlat veya durdur'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        // US-11: To be implemented
-                      },
+                      subtitle: Text(_isTracking ? 'Konum paylaşımı AKTİF' : 'Konum paylaşımı KAPALI'),
+                      trailing: Switch(
+                        value: _isTracking,
+                        activeThumbColor: Colors.purple,
+                        activeTrackColor: Colors.purple.shade200,
+                        onChanged: _toggleLocationTracking,
+                      ),
                     ),
                     const Divider(height: 1),
                     ListTile(
@@ -223,7 +265,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      maxHeight: 80,
+                      constraints: const BoxConstraints(maxHeight: 80),
                       width: double.infinity,
                       child: SingleChildScrollView(
                         child: Text(

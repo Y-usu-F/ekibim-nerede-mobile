@@ -59,4 +59,12 @@ class ApiService {
       'password': password,
     });
   }
+
+  /// REST API: POST /api/locations
+  Future<Response> saveLocation(double latitude, double longitude) async {
+    return await dio.post('api/locations', data: {
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+  }
 }
