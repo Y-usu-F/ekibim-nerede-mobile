@@ -67,4 +67,38 @@ class ApiService {
       'longitude': longitude,
     });
   }
+
+  /// REST API: GET /api/shifts/status
+  Future<Response> getShiftStatus() async {
+    return await dio.get('api/shifts/status');
+  }
+
+  /// REST API: POST /api/shifts/clock-in
+  Future<Response> clockIn(String qrCodeData, double latitude, double longitude) async {
+    return await dio.post('api/shifts/clock-in', data: {
+      'qr_code_data': qrCodeData,
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+  }
+
+  /// REST API: POST /api/shifts/clock-out
+  Future<Response> clockOut(double latitude, double longitude) async {
+    return await dio.post('api/shifts/clock-out', data: {
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+  }
+
+  /// REST API: GET /api/tasks
+  Future<Response> getTasks() async {
+    return await dio.get('api/tasks');
+  }
+
+  /// REST API: PUT /api/tasks/:id/status
+  Future<Response> updateTaskStatus(int taskId, String status) async {
+    return await dio.put('api/tasks/$taskId/status', data: {
+      'status': status,
+    });
+  }
 }

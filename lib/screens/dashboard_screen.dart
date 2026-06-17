@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 import '../services/location_service.dart';
 import 'login_screen.dart';
+import 'shift_screen.dart';
+import 'task_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -216,6 +218,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   children: [
                     ListTile(
+                      leading: const Icon(Icons.access_time_filled, color: Colors.teal),
+                      title: const Text('Mesai Giriş/Çıkış'),
+                      subtitle: const Text('QR kod ile mesai başlat veya bitir'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ShiftScreen()),
+                        ).then((_) {
+                          setState(() {
+                            _isTracking = LocationService().isTracking;
+                          });
+                        });
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       leading: const Icon(Icons.my_location, color: Colors.purple),
                       title: const Text('Konum Paylaşımı Kontrolü'),
                       subtitle: Text(_isTracking ? 'Konum paylaşımı AKTİF' : 'Konum paylaşımı KAPALI'),
@@ -233,7 +252,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       subtitle: const Text('Aktif görev listesini ve detaylarını gör'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
-                        // US-06: To be implemented
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const TaskListScreen()),
+                        );
                       },
                     ),
                   ],
